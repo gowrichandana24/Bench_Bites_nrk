@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 
 import 'vendor/vendor_home_page.dart';
 import 'cafeteria_page.dart';
+import '../services/api_service.dart';
 import '../services/session.dart';
 
 class LoginPage extends StatefulWidget {
@@ -50,19 +51,20 @@ class _LoginPageState extends State<LoginPage> {
       final userData = querySnapshot.docs.first.data();
       final String role = userData['role'] ?? 'user';
 
-      // 4. Save session manually (You can adjust this to match your AppSession format)
-      AppSession.setUser({
-        'uid': firebaseUser.uid,
-        'name': firebaseUser.displayName ?? 'User',
-        'email': firebaseUser.email,
-        'avatar': firebaseUser.photoURL ?? '',
-        'role': role,
-      });
+      // 4. Send the authenticated Firebase user to the backend
+      final backendUser = await ApiService.googleSignIn(
+        googleId: firebaseUser.uid,
+        name: firebaseUser.displayName ?? 'User',
+        email: firebaseUser.email!,
+        avatar: firebaseUser.photoURL ?? '',
+      );
+
+      AppSession.setUser(backendUser);
 
       if (!mounted) return;
 
       // 5. Navigate based on the fetched role
-      if (role == 'vendor') {
+      if (backendUser['role'] == 'vendor') {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(

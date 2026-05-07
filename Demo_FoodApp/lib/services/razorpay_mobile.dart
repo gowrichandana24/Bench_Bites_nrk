@@ -30,19 +30,27 @@ Future<void> initRazorpay(
 Future<void> openRazorpayCheckout(
   Map<String, dynamic> razorpayOrder,
   String email, {
-  String? upiId, // Added optional UPI parameter
+  String? upiId,
+  String? selectedApp,
 }) async {
   
-  // Build the prefill map. Razorpay strictly requires a contact number for UPI flows.
   final prefill = <String, dynamic>{
     'email': email,
     'contact': '9999999999', 
   };
 
-  // If the user typed a UPI ID, add it to the Virtual Payment Address (vpa) field
   if (upiId != null && upiId.isNotEmpty) {
     prefill['vpa'] = upiId;
     prefill['method'] = 'upi';
+  } else if (selectedApp != null && selectedApp.isNotEmpty) {
+    prefill['method'] = 'upi';
+    if (selectedApp == 'GPay') {
+      prefill['app'] = 'com.google.android.apps.nbu.paisa.user';
+    } else if (selectedApp == 'PhonePe') {
+      prefill['app'] = 'com.phonepe.app';
+    } else if (selectedApp == 'Paytm') {
+      prefill['app'] = 'net.one97.paytm';
+    }
   }
 
   final options = {

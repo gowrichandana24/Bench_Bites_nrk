@@ -14,10 +14,10 @@ Future<void> initRazorpay(
 Future<void> openRazorpayCheckout(
   Map<String, dynamic> razorpayOrder,
   String email, {
-  String? upiId, // Added optional UPI parameter
+  String? upiId,
+  String? selectedApp,
 }) async {
   try {
-    // Build the prefill map safely for JS interop
     final prefill = <String, dynamic>{
       'email': email,
       'contact': '9999999999', 
@@ -25,6 +25,8 @@ Future<void> openRazorpayCheckout(
 
     if (upiId != null && upiId.isNotEmpty) {
       prefill['vpa'] = upiId;
+      prefill['method'] = 'upi';
+    } else if (selectedApp != null && selectedApp.isNotEmpty) {
       prefill['method'] = 'upi';
     }
 

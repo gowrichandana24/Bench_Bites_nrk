@@ -102,10 +102,24 @@ class _MenuPageState extends State<MenuPage> {
     });
 
     try {
-      final cafeId = AppSession.cafe?['_id']?.toString() ?? AppSession.cafe?['id']?.toString();
-      if (cafeId == null || cafeId.isEmpty) {
-        throw Exception('Vendor cafe not found');
+      final cafe = AppSession.cafe;
+      if (cafe == null) {
+        if (!mounted) return;
+        setState(() {
+          menu = [];
+        });
+        return;
       }
+
+      final cafeId = cafe['_id']?.toString() ?? cafe['id']?.toString();
+      if (cafeId == null || cafeId.isEmpty) {
+        if (!mounted) return;
+        setState(() {
+          menu = [];
+        });
+        return;
+      }
+
       final items = await ApiService.getMenu(cafeId: cafeId);
       if (!mounted) return;
       setState(() {
@@ -361,20 +375,33 @@ class _MenuPageState extends State<MenuPage> {
         backgroundColor: bgColor,
         body: isLoading
             ? const Center(child: CircularProgressIndicator())
-            : menu.isEmpty
+            : AppSession.cafe == null
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.restaurant_menu_rounded, size: 80, color: Colors.grey.withOpacity(0.5)),
+                        Icon(Icons.storefront_outlined, size: 80, color: Colors.grey.withOpacity(0.5)),
                         const SizedBox(height: 16),
-                        Text('Your menu is empty', style: TextStyle(fontFamily: 'Nunito', fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey)),
+                        Text('No cafeteria assigned yet', style: TextStyle(fontFamily: 'Nunito', fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey)),
                         const SizedBox(height: 8),
-                        Text('Click + Add Item to get started', style: TextStyle(fontFamily: 'Inter', color: Colors.grey.shade500)),
+                        Text('Please wait for an admin to assign your cafeteria.', style: TextStyle(fontFamily: 'Inter', color: Colors.grey.shade500), textAlign: TextAlign.center),
                       ],
                     ),
                   )
-                : ListView(
+                : menu.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.restaurant_menu_rounded, size: 80, color: Colors.grey.withOpacity(0.5)),
+                            const SizedBox(height: 16),
+                            Text('Your menu is empty', style: TextStyle(fontFamily: 'Nunito', fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey)),
+                            const SizedBox(height: 8),
+                            Text('Click + Add Item to get started', style: TextStyle(fontFamily: 'Inter', color: Colors.grey.shade500)),
+                          ],
+                        ),
+                      )
+                    : ListView(
                     padding: const EdgeInsets.all(16),
                     children: groupedMenu.entries.map((entry) {
                       return Column(
@@ -394,7 +421,7 @@ class _MenuPageState extends State<MenuPage> {
                   ),
         floatingActionButton: FloatingActionButton(
           backgroundColor: primaryBlue,
-          onPressed: () => addItem(cardColor, textColor),
+          onPressed: AppSession.cafe == null ? null : () => addItem(cardColor, textColor),
           child: const Icon(Icons.add, color: Colors.white),
         ),
       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'success_page.dart';
 import 'detail_page.dart';
 import 'cart_page.dart';
@@ -56,12 +57,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   @override
   Widget build(BuildContext context) {
-    final background =
-        isDark ? const Color(0xFF020617) : const Color(0xFFF4F6F9);
-
-    final cardColor =
-        isDark ? const Color(0xFF0F172A) : Colors.white;
-
+    final background = isDark ? const Color(0xFF020617) : const Color(0xFFF4F6F9);
+    final cardColor = isDark ? const Color(0xFF0F172A) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black;
 
     return Scaffold(
@@ -86,49 +83,47 @@ class _CheckoutPageState extends State<CheckoutPage> {
               constraints: const BoxConstraints(maxWidth: 900),
               child: Column(
                 children: [
-                   
-    if (widget.isReorder && widget.items != null) ...[
-      Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        margin: const EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.cafeteriaName ?? "",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: textColor,
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            ...widget.items!.map((item) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "${item.name} x ${item.quantity}",
-                    style: TextStyle(color: textColor),
-                  ),
-                  Text(
-                    "₹ ${item.price}",
-                    style: TextStyle(color: textColor),
-                  ),
-                ],
-              ),
-            )),
-          ],
-        ),
-      ),
-    ],
+                  if (widget.isReorder && widget.items != null) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.cafeteriaName ?? "",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          ...widget.items!.map((item) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "${item.name} x ${item.quantity}",
+                                  style: TextStyle(color: textColor),
+                                ),
+                                Text(
+                                  "₹ ${item.price}",
+                                  style: TextStyle(color: textColor),
+                                ),
+                              ],
+                            ),
+                          )),
+                        ],
+                      ),
+                    ),
+                  ],
                   _section("UPI (Recommended)", "upi", _upiUI(), cardColor, textColor, isAvailable: true),
                   _section("Wallets", "wallet", _walletUI(), cardColor, textColor, isAvailable: false),
                   _section("Net Banking", "bank", _bankUI(), cardColor, textColor, isAvailable: false),
@@ -181,7 +176,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   Widget _section(String title, String value, Widget child, Color cardColor, Color textColor, {bool isAvailable = true}) {
     bool isSelected = selectedMethod == value;
-
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
@@ -231,25 +225,27 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   Widget _upiUI() {
     final textColor = isDark ? Colors.white : Colors.black;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Pay using UPI Apps",
-            style: TextStyle(fontWeight: FontWeight.w600, color: textColor)),
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _upiApp("GPay", "gpay.jpg"),
-            _upiApp("PhonePe", "phonepe.jpg"),
-            _upiApp("Paytm", "paytm.jpg"),
-          ],
-        ),
-        const SizedBox(height: 16),
-        const Divider(),
-        const SizedBox(height: 10),
-        Text("Or enter UPI ID", style: TextStyle(color: textColor)),
+        if (!kIsWeb) ...[
+          Text("Pay using UPI Apps",
+              style: TextStyle(fontWeight: FontWeight.w600, color: textColor)),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _upiApp("GPay", "gpay.jpg"),
+              _upiApp("PhonePe", "phonepe.jpg"),
+              _upiApp("Paytm", "paytm.jpg"),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(),
+          const SizedBox(height: 10),
+        ],
+        Text(kIsWeb ? "Enter UPI ID to receive a payment request" : "Or enter UPI ID", 
+             style: TextStyle(color: textColor, fontWeight: kIsWeb ? FontWeight.bold : FontWeight.normal)),
         const SizedBox(height: 8),
         TextField(
           controller: upiController,
@@ -270,7 +266,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   Widget _upiApp(String name, String imagePath) {
     bool isSelected = selectedUPIApp == name;
-
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -294,9 +289,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
               child: ClipOval(
                 child: Image.asset(
                   imagePath,
-                  width: 48, // Increased to perfectly fit the CircleAvatar diameter
-                  height: 48, // Increased to perfectly fit the CircleAvatar diameter
-                  fit: BoxFit.cover, // Changed from contain to cover to eliminate whitespace
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
                     return Icon(Icons.account_balance_wallet, color: primaryColor);
                   },
@@ -323,7 +318,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   Widget _walletTile(String name) {
     final textColor = isDark ? Colors.white : Colors.black;
-
     return ListTile(
       title: Text(name, style: TextStyle(color: textColor)),
       trailing: Radio(
@@ -367,6 +361,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
       setState(() => selectedMethod = "upi");
     }
 
+    if (kIsWeb && selectedMethod == "upi" && upiController.text.trim().isEmpty) {
+      _showError("Please enter your UPI ID to receive a payment request");
+      return;
+    }
+
     final orderItems = _orderItems();
     if (orderItems.isEmpty) {
       _showError("Your cart is empty");
@@ -402,7 +401,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
         if (_razorpayOrder != null) {
           await _openRazorpayCheckout();
         } else {
-          // Fallback if no razorpay order
           if (_currentOrder != null) {
             Navigator.pushReplacement(
               context,
@@ -499,21 +497,19 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
   }
 
-  // --- THIS IS THE ONLY CHANGED METHOD ---
   Future<void> _openRazorpayCheckout() async {
     if (_razorpayOrder == null) return;
 
-    // Grab the UPI ID from the text field
     String? enteredUpiId = upiController.text.trim();
     if (enteredUpiId.isEmpty) {
       enteredUpiId = null;
     }
 
-    // Pass the upiId to the razorpay helper
     await openRazorpayCheckout(
       _razorpayOrder!, 
       AppSession.email,
       upiId: enteredUpiId, 
+      selectedApp: enteredUpiId == null ? selectedUPIApp : null, 
     );
   }
 }

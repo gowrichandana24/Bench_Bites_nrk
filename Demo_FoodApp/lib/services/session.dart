@@ -7,7 +7,11 @@ class AppSession {
   static String get userId => currentUser?["_id"]?.toString() ?? "";
   static String get name => currentUser?["name"]?.toString() ?? "John Doe";
   static String get email => currentUser?["email"]?.toString() ?? "user@gmail.com";
-  static String get vendorId => currentUser?["vendorId"]?.toString() ?? "ADMIN_01";
+  static String get vendorId {
+    final id = currentUser?['_id']?.toString();
+    if (id != null && id.isNotEmpty) return id;
+    return currentUser?["vendorId"]?.toString() ?? "";
+  }
   static String get paymentLabel => currentUser?["paymentLabel"]?.toString() ?? "UPI";
 
   static Map<String, dynamic> get address {
