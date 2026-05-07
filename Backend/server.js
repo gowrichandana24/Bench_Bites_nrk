@@ -148,22 +148,39 @@ app.get('/api/health', (req, res) => {
 
 app.post('/api/auth/google', asyncHandler(async (req, res) => {
   const { googleId, name, email, avatar } = req.body;
-  if (!name || !email) {
-    return res.status(400).json({ message: 'name and email are required' });
+  if (!googleId || !name || !email) {
+    return res.status(400).json({ message: 'googleId, name, and email are required' });
   }
 
-  let user = await User.findOneAndUpdate(
-    { email: email.toLowerCase() },
-    {
-      $set: { googleId, name, avatar },
-      $setOnInsert: { role: 'customer' },
-    },
-    { new: true, upsert: true, runValidators: true }
-  ).populate('cafeId');
+  console.debug('POST /api/auth/google', { googleId, email });
 
-  if (user.role === 'vendor' && user.vendorId && !user.cafeId) {
-    const cafe = await Cafe.findOne({ vendorId: user.vendorId });
+  const filter = {
+    $or: [
+      { googleId },
+      { email: email.toLowerCase() },
+    ],
+  };
+  const update = {
+    $set: { googleId, name, email: email.toLowerCase(), avatar },
+    $setOnInsert: { role: 'customer' },
+  };
+
+  let user = await User.findOneAndUpdate(filter, update, {
+    new: true,
+    upsert: true,
+    runValidators: true,
+  }).populate('cafeId');
+
+  if (user.role === 'vendor' && user._id && !user.cafeId) {
+    const cafe = await Cafe.findOne({
+      $or: [
+        { vendorId: user._id },
+        { legacyVendorId: user.googleId },
+      ],
+    });
+
     if (cafe) {
+      console.debug('Linking vendor to cafe during login', { vendorId: user._id, cafeId: cafe._id });
       user = await User.findByIdAndUpdate(
         user._id,
         { cafeId: cafe._id },
@@ -172,6 +189,7 @@ app.post('/api/auth/google', asyncHandler(async (req, res) => {
     }
   }
 
+  console.debug('Auth response user', { id: user._id.toString(), role: user.role, cafeId: user.cafeId?._id?.toString() });
   res.status(200).json(user);
 }));
 
@@ -190,27 +208,172 @@ app.patch('/api/users/:id', asyncHandler(async (req, res) => {
   res.json(user);
 }));
 
+// ==================== VENDOR-CAFE RELATIONSHIP ENDPOINTS ====================
+
+// Assign a cafeteria to a vendor
+app.post('/api/vendors/:vendorId/assign-cafe', asyncHandler(async (req, res) => {
+  const { vendorId } = req.params;
+  const { cafeId } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(vendorId)) {
+    return res.status(400).json({ message: 'Invalid vendorId' });
+  }
+  if (!mongoose.Types.ObjectId.isValid(cafeId)) {
+    return res.status(400).json({ message: 'Invalid cafeId' });
+  }
+
+  if (!cafeId) {
+    return res.status(400).json({ message: 'cafeId is required' });
+  }
+
+  const vendor = await User.findById(vendorId);
+  if (!vendor) return res.status(404).json({ message: 'Vendor not found' });
+  if (vendor.role !== 'vendor') {
+    return res.status(403).json({ message: 'User is not a vendor' });
+  }
+
+  const cafe = await Cafe.findById(cafeId);
+  if (!cafe) return res.status(404).json({ message: 'Cafe not found' });
+
+  if (cafe.vendorId && cafe.vendorId.toString() !== vendorId) {
+    return res.status(409).json({ message: 'Cafe is already assigned to another vendor' });
+  }
+
+  console.debug('POST /api/vendors/:vendorId/assign-cafe', { vendorId, cafeId });
+
+  const updatedCafe = await Cafe.findByIdAndUpdate(
+    cafeId,
+    {
+      vendorId: vendor._id,
+      legacyVendorId: cafe.legacyVendorId || vendor.googleId || cafe.legacyVendorId,
+    },
+    { new: true, runValidators: true }
+  ).populate('vendorId', 'name email avatar');
+
+  const updatedUser = await User.findByIdAndUpdate(
+    vendorId,
+    { cafeId: cafeId },
+    { new: true, runValidators: true }
+  ).populate('cafeId');
+
+  res.json({
+    message: 'Vendor successfully assigned to cafeteria',
+    vendor: updatedUser,
+    cafe: updatedCafe,
+  });
+}));
+
+// Get vendor's assigned cafeteria
+app.get('/api/vendors/:vendorId/cafes', asyncHandler(async (req, res) => {
+  const { vendorId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(vendorId)) {
+    return res.status(400).json({ message: 'Invalid vendorId' });
+  }
+
+  const vendor = await User.findById(vendorId).populate('cafeId');
+  if (!vendor) return res.status(404).json({ message: 'Vendor not found' });
+  if (vendor.role !== 'vendor') {
+    return res.status(403).json({ message: 'User is not a vendor' });
+  }
+
+  if (vendor.cafeId) {
+    return res.json({ message: 'Vendor cafeteria found', cafe: vendor.cafeId });
+  }
+
+  const cafe = await Cafe.findOne({
+    $or: [
+      { vendorId: vendor._id },
+      { legacyVendorId: vendor.googleId },
+    ],
+  }).populate('vendorId', 'name email avatar');
+
+  if (cafe) {
+    console.debug('Vendor cafe linked using cafe.vendorId', { vendorId, cafeId: cafe._id });
+    await User.findByIdAndUpdate(vendorId, { cafeId: cafe._id });
+    return res.json({ message: 'Vendor cafeteria found', cafe });
+  }
+
+  res.json({ message: 'Vendor has no assigned cafeteria', cafe: null });
+}));
+
+// Get vendor for a specific cafeteria
+app.get('/api/cafes/:cafeId/vendor', asyncHandler(async (req, res) => {
+  const { cafeId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(cafeId)) {
+    return res.status(400).json({ message: 'Invalid cafeId' });
+  }
+
+  const cafe = await Cafe.findById(cafeId).populate('vendorId', 'name email avatar');
+  if (!cafe) return res.status(404).json({ message: 'Cafe not found' });
+
+  if (!cafe.vendorId) {
+    return res.json({ message: 'Cafeteria has no assigned vendor', vendor: null });
+  }
+
+  res.json({ message: 'Vendor found for cafeteria', vendor: cafe.vendorId });
+}));
+
+// Remove vendor from cafeteria (unassign)
+app.delete('/api/vendors/:vendorId/cafes/:cafeId', asyncHandler(async (req, res) => {
+  const { vendorId, cafeId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(vendorId)) {
+    return res.status(400).json({ message: 'Invalid vendorId' });
+  }
+  if (!mongoose.Types.ObjectId.isValid(cafeId)) {
+    return res.status(400).json({ message: 'Invalid cafeId' });
+  }
+
+  const vendor = await User.findById(vendorId);
+  if (!vendor) return res.status(404).json({ message: 'Vendor not found' });
+
+  const cafe = await Cafe.findById(cafeId);
+  if (!cafe) return res.status(404).json({ message: 'Cafe not found' });
+
+  if (cafe.vendorId?.toString() !== vendorId) {
+    return res.status(403).json({ message: 'This cafeteria is not assigned to this vendor' });
+  }
+
+  console.debug('DELETE /api/vendors/:vendorId/cafes/:cafeId', { vendorId, cafeId });
+
+  const updatedCafe = await Cafe.findByIdAndUpdate(cafeId, { vendorId: null }, { new: true, runValidators: true });
+  const updatedUser = await User.findByIdAndUpdate(vendorId, { cafeId: null }, { new: true, runValidators: true });
+
+  res.json({
+    message: 'Vendor successfully unassigned from cafeteria',
+    vendor: updatedUser,
+    cafe: updatedCafe,
+  });
+}));
+
+// ==================== END VENDOR-CAFE ENDPOINTS ====================
+
 app.get('/api/cafes', asyncHandler(async (req, res) => {
-  const cafes = await Cafe.find(buildCafeQuery(req)).sort({ rating: -1, name: 1 });
+  const cafes = await Cafe.find(buildCafeQuery(req))
+    .populate('vendorId', 'name email avatar')
+    .sort({ rating: -1, name: 1 });
   res.json(cafes);
 }));
 
 app.get('/api/cafes/:id', asyncHandler(async (req, res) => {
-  const cafe = await Cafe.findById(req.params.id);
+  const cafe = await Cafe.findById(req.params.id).populate('vendorId', 'name email avatar');
   if (!cafe) return res.status(404).json({ message: 'Cafe not found' });
   res.json(cafe);
 }));
 
 app.post('/api/cafes', asyncHandler(async (req, res) => {
   const cafe = await Cafe.create(req.body);
-  res.status(201).json(cafe);
+  const populatedCafe = await cafe.populate('vendorId', 'name email avatar');
+  res.status(201).json(populatedCafe);
 }));
 
 app.patch('/api/cafes/:id', asyncHandler(async (req, res) => {
   const cafe = await Cafe.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true,
-  });
+  }).populate('vendorId', 'name email avatar');
   if (!cafe) return res.status(404).json({ message: 'Cafe not found' });
   res.json(cafe);
 }));
@@ -218,34 +381,82 @@ app.patch('/api/cafes/:id', asyncHandler(async (req, res) => {
 app.get('/api/menu', asyncHandler(async (req, res) => {
   const query = {};
   if (req.query.cafeId) query.cafeId = req.query.cafeId;
-  if (req.query.vendorId) query.vendorId = req.query.vendorId;
+  
+  // Support both ObjectId vendorId and legacy string vendorId
+  if (req.query.vendorId) {
+    if (mongoose.Types.ObjectId.isValid(req.query.vendorId)) {
+      query.vendorId = req.query.vendorId;
+    } else {
+      query.legacyVendorId = req.query.vendorId;
+    }
+  }
+  
   if (req.query.available !== undefined) query.available = req.query.available === 'true';
   if (req.query.search) query.$text = { $search: req.query.search };
 
-  const items = await MenuItem.find(query).populate('cafeId', 'name slug').sort({ category: 1, name: 1 });
+  const items = await MenuItem.find(query)
+    .populate('cafeId', 'name slug')
+    .populate('vendorId', 'name email')
+    .sort({ category: 1, name: 1 });
   res.json(items);
 }));
 
 app.get('/api/cafes/:id/menu', asyncHandler(async (req, res) => {
-  const items = await MenuItem.find({ cafeId: req.params.id, available: true }).sort({ category: 1, name: 1 });
+  const items = await MenuItem.find({ cafeId: req.params.id, available: true })
+    .populate('vendorId', 'name email')
+    .sort({ category: 1, name: 1 });
   res.json(items);
 }));
 
+// Get menu items for a vendor
+app.get('/api/vendors/:vendorId/menu', asyncHandler(async (req, res) => {
+  const { vendorId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(vendorId)) {
+    return res.status(400).json({ message: 'Invalid vendorId' });
+  }
+
+  const vendor = await User.findById(vendorId);
+  if (!vendor) return res.status(404).json({ message: 'Vendor not found' });
+  if (vendor.role !== 'vendor') return res.status(403).json({ message: 'User is not a vendor' });
+
+  const query = {
+    $or: [
+      { vendorId: vendor._id },
+      { legacyVendorId: vendor.googleId },
+    ],
+  };
+
+  const items = await MenuItem.find(query)
+    .populate('cafeId', 'name slug')
+    .sort({ category: 1, name: 1 });
+
+  console.debug('GET /api/vendors/:vendorId/menu', { vendorId, itemCount: items.length });
+
+  res.json({
+    message: items.isEmpty ? 'No menu items found for this vendor' : 'Menu items found',
+    items,
+  });
+}));
+
 app.post('/api/menu', asyncHandler(async (req, res) => {
+  // If vendorId is provided as a string but cafeId exists, try to get vendor from cafe
   const item = await MenuItem.create(req.body);
-  res.status(201).json(item);
+  const populatedItem = await item.populate(['cafeId', 'vendorId']);
+  res.status(201).json(populatedItem);
 }));
 
 app.post('/api/menu/add', asyncHandler(async (req, res) => {
   const item = await MenuItem.create(req.body);
-  res.status(201).json(item);
+  const populatedItem = await item.populate(['cafeId', 'vendorId']);
+  res.status(201).json(populatedItem);
 }));
 
 app.patch('/api/menu/:id', asyncHandler(async (req, res) => {
   const item = await MenuItem.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true,
-  });
+  }).populate(['cafeId', 'vendorId']);
   if (!item) return res.status(404).json({ message: 'Menu item not found' });
   res.json(item);
 }));
