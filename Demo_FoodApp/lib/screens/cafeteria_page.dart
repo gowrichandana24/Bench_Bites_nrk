@@ -192,7 +192,7 @@ class _CafeteriaPageState extends State<CafeteriaPage> {
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF0F172A) : const Color(0xFFE8F0FF),
             image: DecorationImage(
-              image: const AssetImage('bg.jpg'), 
+              image: const AssetImage('assets/bg.jpg'), 
               fit: BoxFit.cover,
               colorFilter: ColorFilter.mode(
                 isDark ? const Color(0xFF0F172A).withOpacity(0.9) : const Color(0xFFF0F6FF).withOpacity(0.85), 

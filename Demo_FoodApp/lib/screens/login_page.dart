@@ -135,11 +135,11 @@ class _LoginPageState extends State<LoginPage> {
         ),
 
         // PULSING FOOD ANIMATIONS
-        _buildFood('burger.png', top: size.height * 0.08, left: size.width * 0.48, size: 140, duration: 3500, delay: 0, isMobile: isMobile, angle: 0.35),
-        _buildFood('food_bowl.jpg', bottom: size.height * 0.05, left: size.width * 0.35, size: 300, duration: 4000, delay: 500, isMobile: isMobile), 
-        _buildFood('donut.png', bottom: size.height * 0.12, right: size.width * 0.05, size: 110, blur: 5.0, duration: 3000, delay: 1000, isMobile: isMobile),
-        _buildFood('coke.png', bottom: size.height * 0.3, right: size.width * 0.12, size: 100, blur: 4.5, duration: 4500, delay: 200, isMobile: isMobile),
-        _buildFood('tomato.png', top: size.height * 0.42, left: size.width * 0.32, size: 80, blur: 4.0, duration: 3200, delay: 800, isMobile: isMobile), 
+        _buildFood('assets/burger.png', top: size.height * 0.08, left: size.width * 0.48, size: 140, duration: 3500, delay: 0, isMobile: isMobile, angle: 0.35),
+        _buildFood('assets/food_bowl.jpg', bottom: size.height * 0.05, left: size.width * 0.35, size: 300, duration: 4000, delay: 500, isMobile: isMobile), 
+        _buildFood('assets/donut.png', bottom: size.height * 0.12, right: size.width * 0.05, size: 110, blur: 5.0, duration: 3000, delay: 1000, isMobile: isMobile),
+        _buildFood('assets/coke.png', bottom: size.height * 0.3, right: size.width * 0.12, size: 100, blur: 4.5, duration: 4500, delay: 200, isMobile: isMobile),
+        _buildFood('assets/tomato.png', top: size.height * 0.42, left: size.width * 0.32, size: 80, blur: 4.0, duration: 3200, delay: 800, isMobile: isMobile), 
 
         // 🌟 UTENSILS (DESKTOP) - 6 TOTAL 🌟
         _buildFood(null, bottom: size.height * 0.45, left: size.width * 0.28, size: 35, duration: 3800, delay: 100, iconData: Icons.local_dining_rounded, iconColor: Colors.white.withOpacity(0.6), isMobile: isMobile, angle: 0.4),
@@ -195,11 +195,11 @@ class _LoginPageState extends State<LoginPage> {
         ),
 
         // PULSING FOOD ANIMATIONS
-        _buildFood('burger.png', top: 10, right: 10, size: 100, duration: 3500, delay: 0, isMobile: isMobile, angle: 0.35),
-        _buildFood('food_bowl.jpg', top: size.height * 0.2, right: -50, size: 240, duration: 4000, delay: 500, isMobile: isMobile),
-        _buildFood('donut.png', bottom: 50, left: -20, size: 100, blur: 4.0, duration: 3000, delay: 1000, isMobile: isMobile), 
-        _buildFood('coke.png', bottom: -10, right: -20, size: 120, blur: 4.0, duration: 4500, delay: 200, isMobile: isMobile), 
-        _buildFood('tomato.png', top: size.height * 0.45, left: 10, size: 70, blur: 3.5, duration: 3200, delay: 800, isMobile: isMobile),
+        _buildFood('assets/burger.png', top: 10, right: 10, size: 100, duration: 3500, delay: 0, isMobile: isMobile, angle: 0.35),
+        _buildFood('assets/food_bowl.jpg', top: size.height * 0.2, right: -50, size: 240, duration: 4000, delay: 500, isMobile: isMobile),
+        _buildFood('assets/donut.png', bottom: 50, left: -20, size: 100, blur: 4.0, duration: 3000, delay: 1000, isMobile: isMobile), 
+        _buildFood('assets/coke.png', bottom: -10, right: -20, size: 120, blur: 4.0, duration: 4500, delay: 200, isMobile: isMobile), 
+        _buildFood('assets/tomato.png', top: size.height * 0.45, left: 10, size: 70, blur: 3.5, duration: 3200, delay: 800, isMobile: isMobile),
 
         // 🌟 UTENSILS (MOBILE)
         _buildFood(null, top: size.height * 0.12, right: 120, size: 30, duration: 3800, delay: 100, iconData: Icons.local_dining_rounded, iconColor: Colors.white.withOpacity(0.6), isMobile: isMobile, angle: 0.4),
@@ -300,7 +300,7 @@ class _LoginPageState extends State<LoginPage> {
               child: Transform.scale(
                 scale: isMobile ? 1.3 : 1.05, 
                 child: Image.asset(
-                  'logo1.gif',
+                  'assets/logo1.gif',
                   fit: BoxFit.contain,
                   errorBuilder: (_, __, ___) => Icon(Icons.lunch_dining_rounded, color: isMobile ? appBlue : Colors.white, size: 30),
                 ),
@@ -403,7 +403,7 @@ class _LoginPageState extends State<LoginPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Image.asset('google.png', height: 24, errorBuilder: (_, __, ___) => const Icon(Icons.g_mobiledata, size: 28, color: Colors.blue)),
+                  Image.asset('assets/google.png', height: 24, errorBuilder: (_, __, ___) => const Icon(Icons.g_mobiledata, size: 28, color: Colors.blue)),
                   const SizedBox(width: 14),
                   Text(
                     isSigningIn ? "Signing in..." : "Continue with Google",
@@ -545,8 +545,8 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-// ─── ANIMATED NAME WITH BLUR & FADE ────────────────────────────
-class _AnimatedName extends StatefulWidget {
+// ─── STATIC NAME COMPONENT ────────────────────────────
+class _AnimatedName extends StatelessWidget {
   final bool isMobile;
   final Color appBlue;
 
@@ -556,78 +556,16 @@ class _AnimatedName extends StatefulWidget {
   });
 
   @override
-  State<_AnimatedName> createState() => _AnimatedNameState();
-}
-
-class _AnimatedNameState extends State<_AnimatedName> with TickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _opacity;
-  late Animation<double> _blur;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 8500),
-    );
-
-    _opacity = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween(begin: 0.0, end: 1.0).chain(CurveTween(curve: Curves.easeIn)),
-        weight: 40,
-      ),
-      TweenSequenceItem(tween: ConstantTween(1.0), weight: 20),
-      TweenSequenceItem(
-        tween: Tween(begin: 1.0, end: 0.0).chain(CurveTween(curve: Curves.easeOut)),
-        weight: 40,
-      ),
-    ]).animate(_controller);
-
-    _blur = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween(begin: 10.0, end: 0.0).chain(CurveTween(curve: Curves.easeOut)),
-        weight: 40,
-      ),
-      TweenSequenceItem(tween: ConstantTween(0.0), weight: 20),
-      TweenSequenceItem(
-        tween: Tween(begin: 0.0, end: 10.0).chain(CurveTween(curve: Curves.easeIn)),
-        weight: 40,
-      ),
-    ]).animate(_controller);
-
-    _controller.repeat();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return ImageFiltered(
-          imageFilter: ui.ImageFilter.blur(sigmaX: _blur.value, sigmaY: _blur.value),
-          child: Opacity(
-            opacity: _opacity.value,
-            child: Text(
-              "BenchBites",
-              style: TextStyle(
-                fontSize: widget.isMobile ? 34 : 54,
-                fontWeight: FontWeight.w900,
-                color: const Color.fromARGB(255, 47, 59, 228),
-                letterSpacing: -1.5,
-                height: 1.0,
-              ),
-            ),
-          ),
-        );
-      },
+    return Text(
+      "BenchBites",
+      style: TextStyle(
+        fontSize: isMobile ? 34 : 54,
+        fontWeight: FontWeight.w900,
+        color: const Color.fromARGB(255, 47, 59, 228),
+        letterSpacing: -1.5,
+        height: 1.0,
+      ),
     );
   }
 }

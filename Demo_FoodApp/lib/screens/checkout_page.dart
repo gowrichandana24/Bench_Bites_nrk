@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'success_page.dart';
 import 'detail_page.dart';
 import 'cart_page.dart';
@@ -8,6 +7,7 @@ import '../services/session.dart';
 import '../services/razorpay_helper.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:url_launcher/url_launcher.dart';
 
 class CheckoutPage extends StatefulWidget {
   final List<OrderItem>? items; 
@@ -35,6 +35,25 @@ class _CheckoutPageState extends State<CheckoutPage> {
   String selectedWallet = "";
   String selectedBank = "";
   bool isSubmitting = false;
+  Future<void> launchUPIApp({
+  required String upiId,
+  required String name,
+  required double amount,
+}) async {
+
+  Uri uri = Uri.parse(
+    "upi://pay?pa=$upiId&pn=$name&am=$amount&cu=INR"
+  );
+
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+  } else {
+    _showError("UPI app not found");
+  }
+}
 
   final TextEditingController upiController = TextEditingController();
 
@@ -57,8 +76,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   @override
   Widget build(BuildContext context) {
-    final background = isDark ? const Color(0xFF020617) : const Color(0xFFF4F6F9);
-    final cardColor = isDark ? const Color(0xFF0F172A) : Colors.white;
+    final background =
+        isDark ? const Color(0xFF020617) : const Color(0xFFF4F6F9);
+
+    final cardColor =
+        isDark ? const Color(0xFF0F172A) : Colors.white;
+
     final textColor = isDark ? Colors.white : Colors.black;
 
     return Scaffold(
@@ -83,48 +106,30 @@ class _CheckoutPageState extends State<CheckoutPage> {
               constraints: const BoxConstraints(maxWidth: 900),
               child: Column(
                 children: [
-                  if (widget.isReorder && widget.items != null) ...[
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: cardColor,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.cafeteriaName ?? "",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: textColor,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          ...widget.items!.map((item) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  "${item.name} x ${item.quantity}",
-                                  style: TextStyle(color: textColor),
-                                ),
-                                Text(
-                                  "₹ ${item.price}",
-                                  style: TextStyle(color: textColor),
-                                ),
-                              ],
-                            ),
-                          )),
-                        ],
-                      ),
-                    ),
-                  ],
-                  _section("UPI (Recommended)", "upi", _upiUI(), cardColor, textColor, isAvailable: true),
+                   
+    if (widget.isReorder && widget.items != null) ...[
+Container(
+          width: double.infinity,
+          padding: EdgeInsets.only(
+            top: MediaQuery.of(context).padding.top + 20, 
+            left: 20, 
+            right: 20, 
+            bottom: 60 
+          ),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF0F172A) : const Color(0xFFE8F0FF),
+            image: DecorationImage(
+              image: const AssetImage('assets/bg.jpg'), 
+              fit: BoxFit.cover,
+              colorFilter: ColorFilter.mode(
+                isDark ? const Color(0xFF0F172A).withOpacity(0.9) : const Color(0xFFF0F6FF).withOpacity(0.85), 
+                BlendMode.srcATop
+              ),
+            ),
+          ),
+        ),
+    ],
+                  _section("UPI", "upi", _upiUI(), cardColor, textColor, isAvailable: true),
                   _section("Wallets", "wallet", _walletUI(), cardColor, textColor, isAvailable: false),
                   _section("Net Banking", "bank", _bankUI(), cardColor, textColor, isAvailable: false),
                   const SizedBox(height: 100),
@@ -176,6 +181,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   Widget _section(String title, String value, Widget child, Color cardColor, Color textColor, {bool isAvailable = true}) {
     bool isSelected = selectedMethod == value;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
@@ -225,53 +231,51 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   Widget _upiUI() {
     final textColor = isDark ? Colors.white : Colors.black;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (!kIsWeb) ...[
-          Text("Pay using UPI Apps",
-              style: TextStyle(fontWeight: FontWeight.w600, color: textColor)),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _upiApp("GPay", "gpay.jpg"),
-              _upiApp("PhonePe", "phonepe.jpg"),
-              _upiApp("Paytm", "paytm.jpg"),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Divider(),
-          const SizedBox(height: 10),
-        ],
-        Text(kIsWeb ? "Enter UPI ID to receive a payment request" : "Or enter UPI ID", 
-             style: TextStyle(color: textColor, fontWeight: kIsWeb ? FontWeight.bold : FontWeight.normal)),
-        const SizedBox(height: 8),
-        TextField(
-          controller: upiController,
-          style: TextStyle(color: textColor),
-          decoration: InputDecoration(
-            hintText: "example@upi",
-            filled: true,
-            fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF4F6F9),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-          ),
-        )
+        Text("Pay using UPI Apps",
+            style: TextStyle(fontWeight: FontWeight.w600, color: textColor)),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _upiApp("GPay", "assets/gpay.jpg"),
+            _upiApp("PhonePe", "assets/phonepe.jpg"),
+            _upiApp("Paytm", "assets/paytm.jpg"),
+          ],
+        ),
       ],
     );
   }
 
   Widget _upiApp(String name, String imagePath) {
     bool isSelected = selectedUPIApp == name;
+
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedUPIApp = name;
-        });
-      },
+     onTap: () async {
+  setState(() {
+    selectedUPIApp = name;
+  });
+
+  double totalAmount = widget.items != null
+      ? widget.items!.fold(
+          0.0,
+          (sum, item) => sum + (item.price * item.quantity),
+        ).toDouble()
+      : globalCartItems.fold(
+          0.0,
+          (sum, item) =>
+              sum + ((item["price"] as num) * (item["qty"] as int)),
+        );
+
+  await launchUPIApp(
+    upiId: "yourupi@oksbi",
+    name: "LunchTime",
+    amount: totalAmount,
+  );
+},
       child: Column(
         children: [
           Container(
@@ -289,9 +293,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
               child: ClipOval(
                 child: Image.asset(
                   imagePath,
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.cover,
+                  width: 48, // Increased to perfectly fit the CircleAvatar diameter
+                  height: 48, // Increased to perfectly fit the CircleAvatar diameter
+                  fit: BoxFit.cover, // Changed from contain to cover to eliminate whitespace
                   errorBuilder: (context, error, stackTrace) {
                     return Icon(Icons.account_balance_wallet, color: primaryColor);
                   },
@@ -318,6 +322,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   Widget _walletTile(String name) {
     final textColor = isDark ? Colors.white : Colors.black;
+
     return ListTile(
       title: Text(name, style: TextStyle(color: textColor)),
       trailing: Radio(
@@ -335,7 +340,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   Widget _bankUI() {
     return DropdownButtonFormField<String>(
-      value: selectedBank.isEmpty ? null : selectedBank,
+      initialValue: selectedBank.isEmpty ? null : selectedBank,
       hint: const Text("Select Bank"),
       items: ["HDFC", "ICICI", "SBI", "Axis"]
         .map((e) => DropdownMenuItem(value: e, child: Text(e)))
@@ -359,11 +364,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
   Future<void> _handlePayment() async {
     if (selectedMethod.isEmpty) {
       setState(() => selectedMethod = "upi");
-    }
-
-    if (kIsWeb && selectedMethod == "upi" && upiController.text.trim().isEmpty) {
-      _showError("Please enter your UPI ID to receive a payment request");
-      return;
     }
 
     final orderItems = _orderItems();
@@ -401,6 +401,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         if (_razorpayOrder != null) {
           await _openRazorpayCheckout();
         } else {
+          // Fallback if no razorpay order
           if (_currentOrder != null) {
             Navigator.pushReplacement(
               context,
@@ -456,6 +457,44 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
+  Future<void> _showOrderPlacedPopup() async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
+          title: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F4CFF).withOpacity(0.16),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.check_circle_outline, color: Color(0xFF0F4CFF), size: 30),
+              ),
+              const SizedBox(width: 12),
+              Text('Order Confirmed', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+            ],
+          ),
+          content: Text(
+            'Your payment was successful and your order has been placed. Check notifications for updates.',
+            style: TextStyle(color: isDark ? Colors.white70 : Colors.black87),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _handleRazorpayError(String message) {
     _showError('Payment failed: $message');
   }
@@ -485,6 +524,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         }
 
         if (!mounted || _currentOrder == null) return;
+        await _showOrderPlacedPopup();
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => SuccessPage(order: _currentOrder!)),
@@ -497,19 +537,21 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
   }
 
+  // --- THIS IS THE ONLY CHANGED METHOD ---
   Future<void> _openRazorpayCheckout() async {
     if (_razorpayOrder == null) return;
 
+    // Grab the UPI ID from the text field
     String? enteredUpiId = upiController.text.trim();
     if (enteredUpiId.isEmpty) {
       enteredUpiId = null;
     }
 
+    // Pass the upiId to the razorpay helper
     await openRazorpayCheckout(
       _razorpayOrder!, 
       AppSession.email,
       upiId: enteredUpiId, 
-      selectedApp: enteredUpiId == null ? selectedUPIApp : null, 
     );
   }
 }
