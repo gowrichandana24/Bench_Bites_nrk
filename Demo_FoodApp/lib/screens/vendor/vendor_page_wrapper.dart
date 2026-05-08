@@ -97,14 +97,29 @@ class _VendorPageWrapperState extends State<VendorPageWrapper> {
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: primaryBlue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(Icons.storefront_rounded,
-                      color: primaryBlue, size: 28),
-                ),
+  width: 56,
+  height: 56,
+  decoration: BoxDecoration(
+    borderRadius: BorderRadius.circular(16),
+    color: primaryBlue.withOpacity(0.1),
+  ),
+  clipBehavior: Clip.antiAlias,
+  child: VendorData.displayImage.isNotEmpty
+      ? Image.network(
+          VendorData.displayImage,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Icon(
+            Icons.storefront_rounded,
+            color: primaryBlue,
+            size: 28,
+          ),
+        )
+      : Icon(
+          Icons.storefront_rounded,
+          color: primaryBlue,
+          size: 28,
+        ),
+),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(

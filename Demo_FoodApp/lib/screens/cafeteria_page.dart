@@ -1,7 +1,5 @@
 ﻿import 'package:flutter/material.dart';
-
 import '../services/api_service.dart';
-import '../services/theme_service.dart';
 import 'home_page.dart';
 import 'profile_page.dart';
 import 'notification_page.dart';
@@ -211,22 +209,15 @@ class _CafeteriaPageState extends State<CafeteriaPage> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Container( 
-
-width: 50, 
-height: 50, 
-decoration: BoxDecoration( 
-shape: BoxShape.circle, 
-color: isDark ? Colors.white.withOpacity(0.08) : Colors.white, boxShadow: [ 
-BoxShadow( color: Colors.black.withOpacity(0.08), 
-blurRadius: 8,
- ),
- ],
- ),
- child: ClipOval( child: Image.asset( 'assets/staticlogo.png', fit: BoxFit.cover,
- ), 
-),
-),
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withOpacity(0.1) : const Color(0xFFDDE6FF),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Icon(Icons.restaurant, color: appBlue, size: 28),
+                      ),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Column(
@@ -250,7 +241,7 @@ blurRadius: 8,
                       _iconButton(
                         icon: isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
                         isDark: isDark,
-                        onTap: toggleAppTheme,
+                        onTap: widget.toggleTheme, 
                       ),
                       const SizedBox(width: 10),
                       _iconButton(

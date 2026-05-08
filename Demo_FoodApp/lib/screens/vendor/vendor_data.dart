@@ -6,7 +6,16 @@ class VendorData {
   static String description = "Premium burgers and fast food with fresh ingredients";
   static String phone = "+91 98765 43210";
   static String email = "contact@burgerking.com";
+  static String imageUrl = "";
+  static String get displayImage {
+  final cafeImage = AppSession.cafe?['image']?.toString().trim();
 
+  if (cafeImage != null && cafeImage.isNotEmpty) {
+    return cafeImage;
+  }
+
+  return VendorData.imageUrl;
+}
   static String address = "Shop No. 12, Food Court, Tech Park";
   static String city = "Noida";
   static String pin = "201301";

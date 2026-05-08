@@ -731,6 +731,8 @@ class _DetailPageState extends State<DetailPage> {
                     Row(
                       children: [
                         _buildOrderStatusChip(status),
+                        const SizedBox(width: 12),
+                        Text(status, style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 13)),
                       ],
                     ),
                   ],

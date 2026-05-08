@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../services/api_service.dart';
 import 'vendor_data.dart';
 import 'vendor_page_wrapper.dart'; // ✅ Import wrapper
 
@@ -22,14 +21,10 @@ class _SettingsPageState extends State<SettingsPage> {
       emailCtrl,
       addressCtrl,
       cityCtrl,
-      pinCtrl,
-      promoTitleCtrl,
-      promoMessageCtrl;
+      pinCtrl;
   bool orderNotif = VendorData.orderNotif;
   bool emailNotif = VendorData.emailNotif;
   bool smsNotif = VendorData.smsNotif;
-  bool isSendingPromo = false;
-  String? promoStatusMessage;
 
   @override
   void initState() {
@@ -42,8 +37,6 @@ class _SettingsPageState extends State<SettingsPage> {
     addressCtrl = TextEditingController(text: VendorData.displayAddress);
     cityCtrl = TextEditingController(text: VendorData.displayCity);
     pinCtrl = TextEditingController(text: VendorData.displayPin);
-    promoTitleCtrl = TextEditingController();
-    promoMessageCtrl = TextEditingController();
   }
 
   void toggleEdit() => setState(() => isEditing = !isEditing);
@@ -67,38 +60,6 @@ class _SettingsPageState extends State<SettingsPage> {
         backgroundColor: Colors.green,
       ),
     );
-  }
-
-  Future<void> sendPromoNotification() async {
-    final title = promoTitleCtrl.text.trim();
-    final message = promoMessageCtrl.text.trim();
-    if (title.isEmpty || message.isEmpty) {
-      setState(() => promoStatusMessage = "Please enter both title and message.");
-      return;
-    }
-
-    setState(() {
-      isSendingPromo = true;
-      promoStatusMessage = null;
-    });
-
-    try {
-      await ApiService.sendPromotionNotification(
-        title: title,
-        message: message,
-      );
-      setState(() {
-        promoStatusMessage = "Offer notification sent to all customers.";
-        promoTitleCtrl.clear();
-        promoMessageCtrl.clear();
-      });
-    } catch (error) {
-      setState(() {
-        promoStatusMessage = "Failed to send offer notification: $error";
-      });
-    } finally {
-      setState(() => isSendingPromo = false);
-    }
   }
 
   @override
@@ -195,82 +156,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       .fade(delay: 200.ms)
                       .slideY(begin: 0.1),
 
-                  /// 🔹 PROMOTION NOTIFICATIONS
-                  buildCard(
-                    "Promotion / Coupon Notification",
-                    Icons.local_offer_rounded,
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        buildField("Offer Title", promoTitleCtrl, textColor, isDark),
-                        buildField("Message", promoMessageCtrl, textColor, isDark, maxLines: 3),
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: isSendingPromo ? null : sendPromoNotification,
-                          icon: const Icon(Icons.send_rounded, size: 18),
-                          label: Text(isSendingPromo ? "Sending..." : "Send Offer Notification"),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryBlue,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                        if (promoStatusMessage != null) ...[
-                          const SizedBox(height: 12),
-                          Text(
-                            promoStatusMessage!,
-                            style: TextStyle(
-                              color: promoStatusMessage!.toLowerCase().contains('failed') ? Colors.redAccent : Colors.green,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    cardColor,
-                    textColor,
-                    isDark,
-                  )
-                      .animate()
-                      .fade(delay: 250.ms)
-                      .slideY(begin: 0.1),
-
-                  /// 🔹 ACCOUNT SETTINGS
-                  buildCard(
-                    "Account Settings",
-                    Icons.person_rounded,
-                    Column(
-                      children: [
-                        buildField("Password", TextEditingController(text: "••••••••"), textColor, isDark,
-                            obscure: true),
-                        const SizedBox(height: 16),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.red.withOpacity(0.3)),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              "Deactivate Account",
-                              style: TextStyle(
-                                fontFamily: 'Nunito',
-                                color: Colors.redAccent,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                        )
-                      ],
-                    ),
-                    cardColor,
-                    textColor,
-                    isDark,
-                  )
-                      .animate()
-                      .fade(delay: 300.ms)
-                      .slideY(begin: 0.1),
+               
 
                   const SizedBox(height: 50),
                 ],

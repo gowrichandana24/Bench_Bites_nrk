@@ -7,46 +7,9 @@ const Cafe = require('./models/cafe');
 const MenuItem = require('./models/menuitems');
 const Order = require('./models/order');
 const User = require('./models/user');
-const Notification = require('./models/notification');
-const admin = require('firebase-admin');
 
 const app = express();
 const allowedStatuses = ['Pending', 'Preparing', 'Ready', 'Completed', 'Rejected'];
-
-function initializeFirebaseAdmin() {
-  if (admin.apps.length > 0) return;
-
-  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT || process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
-  if (serviceAccountJson) {
-    let credential;
-    try {
-      const parsed = JSON.parse(serviceAccountJson);
-      credential = admin.credential.cert(parsed);
-    } catch (err) {
-      console.error('Firebase service account JSON is invalid:', err.message);
-    }
-    if (credential) {
-      admin.initializeApp({ credential });
-      console.log('Firebase Admin initialized using env service account JSON');
-      return;
-    }
-  }
-
-  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    admin.initializeApp();
-    console.log('Firebase Admin initialized using GOOGLE_APPLICATION_CREDENTIALS');
-    return;
-  }
-
-  try {
-    admin.initializeApp();
-    console.log('Firebase Admin initialized using default credentials');
-  } catch (error) {
-    console.warn('Firebase Admin initialization failed. Push notifications will not work until credentials are added.');
-  }
-}
-
-initializeFirebaseAdmin();
 
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || '*' }));
 app.use(express.json({ limit: '50mb' }));
@@ -72,106 +35,6 @@ function buildCafeQuery(req) {
     query.category = req.query.category;
   }
   return query;
-}
-
-function getStatusNotificationText(status) {
-  switch (status) {
-    case 'Pending':
-      return { title: 'Order Placed', message: 'Your order has been placed and is waiting for confirmation.' };
-    case 'Preparing':
-      return { title: 'Order Accepted', message: 'Your order has been accepted and is being prepared.' };
-    case 'Ready':
-      return { title: 'Out for Delivery', message: 'Your order is ready and out for delivery.' };
-    case 'Completed':
-      return { title: 'Delivered', message: 'Your order has been delivered. Enjoy your meal!' };
-    case 'Rejected':
-      return { title: 'Order Cancelled', message: 'Your order has been cancelled. Please contact support if needed.' };
-    default:
-      return { title: 'Order Update', message: 'Your order status has been updated.' };
-  }
-}
-
-function buildNotificationPayload(title, message) {
-  return {
-    notification: {
-      title,
-      body: message,
-    },
-    android: {
-      priority: 'high',
-      notification: {
-        channelId: 'orders',
-      },
-    },
-    apns: {
-      payload: {
-        aps: {
-          alert: { title, body: message },
-          sound: 'default',
-        },
-      },
-    },
-    webpush: {
-      headers: {
-        Urgency: 'high',
-      },
-    },
-  };
-}
-
-async function sendPushNotification(tokens, title, message) {
-  const validTokens = Array.from(new Set((tokens || []).filter(Boolean)));
-  if (!validTokens.length || !admin.apps.length) {
-    return;
-  }
-  const payload = buildNotificationPayload(title, message);
-  try {
-    const response = await admin.messaging().sendMulticast({ tokens: validTokens, ...payload });
-    if (response.failureCount > 0) {
-      console.warn('FCM push failures:', response.responses.filter(r => !r.success));
-    }
-  } catch (error) {
-    console.error('FCM sendMulticast error:', error);
-  }
-}
-
-async function createNotificationRecord({ userId, title, message, type = 'system', orderId = null, items = [] }) {
-  const notification = await Notification.create({ userId, title, message, type, orderId, items });
-  return notification;
-}
-
-async function notifyUserById(userId, title, message, type = 'system', orderId = null, items = []) {
-  const user = await User.findById(userId).lean();
-  if (!user) return;
-  const tokens = Array.isArray(user.fcmTokens) ? user.fcmTokens : [];
-  await createNotificationRecord({ userId, title, message, type, orderId, items });
-  await sendPushNotification(tokens, title, message);
-}
-
-async function notifyUsers(userIds, title, message, type = 'promotion') {
-  const users = await User.find({ _id: { $in: userIds } }).lean();
-  const allTokens = [];
-  for (const user of users) {
-    const tokens = Array.isArray(user.fcmTokens) ? user.fcmTokens : [];
-    if (tokens.length) {
-      allTokens.push(...tokens);
-      await createNotificationRecord({ userId: user._id, title, message, type, orderId: null, items: [] });
-    }
-  }
-  await sendPushNotification(allTokens, title, message);
-}
-
-async function notifyAllUsers(title, message, type = 'promotion') {
-  const users = await User.find({}).select('fcmTokens').lean();
-  const allTokens = [];
-  for (const user of users) {
-    const tokens = Array.isArray(user.fcmTokens) ? user.fcmTokens : [];
-    if (tokens.length) {
-      allTokens.push(...tokens);
-      await createNotificationRecord({ userId: user._id, title, message, type, orderId: null, items: [] });
-    }
-  }
-  await sendPushNotification(allTokens, title, message);
 }
 
 async function createOrder(req, res) {
@@ -233,12 +96,6 @@ async function createOrder(req, res) {
     notes,
   });
 
-  if (userId && mongoose.Types.ObjectId.isValid(userId)) {
-    const title = 'Order Placed';
-    const message = `Your order ${order.orderId} has been placed successfully.`;
-    notifyUserById(userId, title, message, 'order', order._id, normalizedItems.map(item => item.name));
-  }
-
   res.status(201).json(order);
 }
 
@@ -260,22 +117,17 @@ app.get('/api/health', (req, res) => {
 });
 
 app.post('/api/auth/google', asyncHandler(async (req, res) => {
-  const { googleId, name, email, avatar, fcmToken } = req.body;
+  const { googleId, name, email, avatar } = req.body;
   if (!name || !email) {
     return res.status(400).json({ message: 'name and email are required' });
   }
 
-  const update = {
-    $set: { googleId, name, avatar },
-    $setOnInsert: { role: 'customer' },
-  };
-  if (fcmToken && typeof fcmToken === 'string') {
-    update.$addToSet = { fcmTokens: fcmToken };
-  }
-
   let user = await User.findOneAndUpdate(
     { email: email.toLowerCase() },
-    update,
+    {
+      $set: { googleId, name, avatar },
+      $setOnInsert: { role: 'customer' },
+    },
     { new: true, upsert: true, runValidators: true }
   ).populate('cafeId');
 
@@ -306,54 +158,6 @@ app.patch('/api/users/:id', asyncHandler(async (req, res) => {
 
   if (!user) return res.status(404).json({ message: 'User not found' });
   res.json(user);
-}));
-
-app.post('/api/users/:id/fcm-token', asyncHandler(async (req, res) => {
-  const { token } = req.body;
-  if (!token || typeof token !== 'string') {
-    return res.status(400).json({ message: 'FCM token is required' });
-  }
-
-  const user = await User.findByIdAndUpdate(
-    req.params.id,
-    { $addToSet: { fcmTokens: token } },
-    { new: true, runValidators: true }
-  ).populate('cafeId');
-
-  if (!user) return res.status(404).json({ message: 'User not found' });
-  res.json({ ok: true, user });
-}));
-
-app.get('/api/notifications/:userId', asyncHandler(async (req, res) => {
-  const notifications = await Notification.find({ userId: req.params.userId }).sort({ createdAt: -1 });
-  res.json(notifications);
-}));
-
-app.patch('/api/notifications/:notificationId/read', asyncHandler(async (req, res) => {
-  const notification = await Notification.findByIdAndUpdate(req.params.notificationId, { isRead: true }, { new: true });
-  if (!notification) return res.status(404).json({ message: 'Notification not found' });
-  res.json(notification);
-}));
-
-app.delete('/api/notifications/:notificationId', asyncHandler(async (req, res) => {
-  const notification = await Notification.findByIdAndDelete(req.params.notificationId);
-  if (!notification) return res.status(404).json({ message: 'Notification not found' });
-  res.status(204).send();
-}));
-
-app.post('/api/notifications/send', asyncHandler(async (req, res) => {
-  const { title, message, targetUserIds } = req.body;
-  if (!title || !message) {
-    return res.status(400).json({ message: 'title and message are required' });
-  }
-
-  if (Array.isArray(targetUserIds) && targetUserIds.length > 0) {
-    await notifyUsers(targetUserIds, title, message, 'promotion');
-  } else {
-    await notifyAllUsers(title, message, 'promotion');
-  }
-
-  res.status(200).json({ ok: true });
 }));
 
 app.get('/api/cafes', asyncHandler(async (req, res) => {
@@ -447,18 +251,13 @@ app.patch('/api/orders/:orderId/status', asyncHandler(async (req, res) => {
     return res.status(400).json({ message: `status must be one of: ${allowedStatuses.join(', ')}` });
   }
 
-  const order = await Order.findOne({ orderId: req.params.orderId });
+  const order = await Order.findOneAndUpdate(
+    { orderId: req.params.orderId },
+    { status },
+    { new: true, runValidators: true }
+  );
+
   if (!order) return res.status(404).json({ message: 'Order not found' });
-
-  const previousStatus = order.status;
-  order.status = status;
-  await order.save();
-
-  if (order.userId) {
-    const statusText = getStatusNotificationText(status);
-    notifyUserById(order.userId, statusText.title, `${statusText.message} (Order ${order.orderId})`, 'order', order._id, order.items.map(item => item.name));
-  }
-
   res.json(order);
 }));
 

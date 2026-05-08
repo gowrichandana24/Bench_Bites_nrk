@@ -12,6 +12,19 @@ class AppSession {
     if (id != null && id.isNotEmpty) return id;
     return currentUser?["vendorId"]?.toString() ?? "";
   }
+  static String get cafeId {
+  final cafeData = currentUser?["cafeId"];
+
+  if (cafeData is Map<String, dynamic>) {
+    return cafeData["_id"]?.toString() ?? "";
+  }
+
+  if (cafeData is Map) {
+    return cafeData["_id"]?.toString() ?? "";
+  }
+
+  return cafeData?.toString() ?? "";
+}
   static String get paymentLabel => currentUser?["paymentLabel"]?.toString() ?? "UPI";
 
   static Map<String, dynamic> get address {
