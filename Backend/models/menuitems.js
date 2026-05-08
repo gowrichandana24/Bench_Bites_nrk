@@ -3,14 +3,7 @@ const mongoose = require('mongoose');
 const MenuItemSchema = new mongoose.Schema(
   {
     cafeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Cafe', required: true, index: true },
-    // Reference to vendor (User with role='vendor')
-    vendorId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      index: true,
-    },
-    // Legacy string field for backwards compatibility
-    legacyVendorId: { type: String, default: 'ADMIN_01', index: true },
+    vendorId: { type: String, default: 'ADMIN_01', index: true },
     name: { type: String, required: true, trim: true },
     description: { type: String, default: '', trim: true },
     price: { type: Number, required: true, min: 0 },
