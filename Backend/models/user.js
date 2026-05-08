@@ -18,6 +18,7 @@ const UserSchema = new mongoose.Schema(
       pincode: { type: String, default: '' },
     },
     paymentLabel: { type: String, default: 'UPI' },
+    fcmTokens: [{ type: String, trim: true }],
   },
   { timestamps: true }
 );
