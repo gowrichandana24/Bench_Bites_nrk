@@ -172,59 +172,35 @@ class ApiService {
     final response = await http.get(Uri.parse('$baseUrl/vendor/$vendorId/dashboard'));
     return _decodeObject(response);
   }
-
   static Future<List<Map<String, dynamic>>> getNotifications(String userId) async {
-    final uri = Uri.parse('$baseUrl/notifications').replace(queryParameters: {'userId': userId});
-    final response = await http.get(uri);
-    return _decodeList(response);
+  final response = await http.get(Uri.parse('$baseUrl/notifications/$userId'));
+  return _decodeList(response);
+}
+
+static Future<void> markNotificationAsRead(String notificationId) async {
+  final response = await http.patch(
+    Uri.parse('$baseUrl/notifications/$notificationId/read'),
+    headers: {'Content-Type': 'application/json'},
+  );
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    final decoded = jsonDecode(response.body);
+    final message = decoded is Map && decoded['message'] != null
+        ? decoded['message'].toString()
+        : 'Request failed with status ${response.statusCode}';
+    throw Exception(message);
   }
+}
 
-  static Future<Map<String, dynamic>> createNotification({
-    required String userId,
-    required String title,
-    required String message,
-    String type = 'system',
-    String? orderId,
-    List<String>? items,
-  }) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/notifications'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'userId': userId,
-        'title': title,
-        'message': message,
-        'type': type,
-        if (orderId != null) 'orderId': orderId,
-        if (items != null) 'items': items,
-      }),
-    );
-
-    return _decodeObject(response);
+static Future<void> deleteNotification(String notificationId) async {
+  final response = await http.delete(Uri.parse('$baseUrl/notifications/$notificationId'));
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    final decoded = jsonDecode(response.body);
+    final message = decoded is Map && decoded['message'] != null
+        ? decoded['message'].toString()
+        : 'Request failed with status ${response.statusCode}';
+    throw Exception(message);
   }
-
-  static Future<Map<String, dynamic>> markNotificationAsRead(String notificationId) async {
-    final response = await http.patch(
-      Uri.parse('$baseUrl/notifications/$notificationId/read'),
-      headers: {'Content-Type': 'application/json'},
-    );
-
-    return _decodeObject(response);
-  }
-
-  static Future<void> deleteNotification(String notificationId) async {
-    final response = await http.delete(Uri.parse('$baseUrl/notifications/$notificationId'));
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      String message = 'Request failed with status ${response.statusCode}';
-      if (response.body.isNotEmpty) {
-        final decoded = jsonDecode(response.body);
-        if (decoded is Map && decoded['message'] != null) {
-          message = decoded['message'].toString();
-        }
-      }
-      throw Exception(message);
-    }
-  }
+}
 
   static Map<String, dynamic> _decodeObject(http.Response response) {
     final decoded = jsonDecode(response.body);
@@ -248,3 +224,4 @@ class ApiService {
     return (decoded as List).map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 }
+
