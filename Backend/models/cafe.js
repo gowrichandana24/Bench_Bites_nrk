@@ -15,14 +15,7 @@ const CafeSchema = new mongoose.Schema(
     tag: { type: String, default: '' },
     offer: { type: String, default: '' },
     location: { type: String, default: '' },
-    // Reference to vendor (User with role='vendor')
-    vendorId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      index: true,
-    },
-    // Legacy string field for backwards compatibility
-    legacyVendorId: { type: String, default: 'ADMIN_01', index: true },
+    vendorId: { type: String, default: 'ADMIN_01', index: true },
     active: { type: Boolean, default: true },
   },
   { timestamps: true }
