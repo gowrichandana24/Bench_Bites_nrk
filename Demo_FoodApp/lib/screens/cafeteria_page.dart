@@ -209,15 +209,22 @@ class _CafeteriaPageState extends State<CafeteriaPage> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white.withOpacity(0.1) : const Color(0xFFDDE6FF),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Icon(Icons.restaurant, color: appBlue, size: 28),
-                      ),
+                      Container( 
+
+width: 50, 
+height: 50, 
+decoration: BoxDecoration( 
+shape: BoxShape.circle, 
+color: isDark ? Colors.white.withOpacity(0.08) : Colors.white, boxShadow: [ 
+BoxShadow( color: Colors.black.withOpacity(0.08), 
+blurRadius: 8,
+ ),
+ ],
+ ),
+ child: ClipOval( child: Image.asset( 'assets/staticlogo.png', fit: BoxFit.cover,
+ ), 
+),
+),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Column(
