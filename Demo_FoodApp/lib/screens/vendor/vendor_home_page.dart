@@ -317,6 +317,14 @@ class _VendorHomePageState extends State<VendorHomePage> {
       "status": order["status"] ?? "Pending",
       "items": order["items"] ?? [],
     }).toList();
+    /*
+    final oldOrders = [
+      {"id": "ORD1092", "name": "John Mason", "amount": "₹450", "status": "Pending", "items": [{"name": "Premium Burger", "qty": 2, "price": 200}, {"name": "Cold Coffee", "qty": 1, "price": 50}]},
+      {"id": "ORD1091", "name": "Sarah Connor", "amount": "₹320", "status": "Preparing", "items": [{"name": "Chicken Wrap", "qty": 1, "price": 120}, {"name": "Fries", "qty": 2, "price": 100}]},
+      {"id": "ORD1090", "name": "Mike Davis", "amount": "₹150", "status": "Ready", "items": [{"name": "Cappuccino", "qty": 1, "price": 150}]},
+      {"id": "ORD1089", "name": "Emma Wilson", "amount": "₹890", "status": "Completed", "items": [{"name": "Family Meal Deal", "qty": 1, "price": 890}]},
+    ];
+    */
 
     return Container(
       decoration: BoxDecoration(color: cardColor, borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.05), blurRadius: 20, offset: const Offset(0, 10))]),
@@ -404,22 +412,6 @@ class _VendorOrderDetailsPageState extends State<VendorOrderDetailsPage> {
   void initState() {
     super.initState();
     currentStatus = widget.order["status"];
-  }
-
-  // Functional update to sync backend and frontend routing
-  Future<void> _updateBackendAndNavigate(String newStatus) async {
-    try {
-      await ApiService.updateOrderStatus(widget.order['id'], newStatus);
-
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const OrdersPage()),
-        );
-      }
-    } catch (e) {
-      debugPrint("Error updating database: $e");
-    }
   }
 
   @override
@@ -518,15 +510,15 @@ class _VendorOrderDetailsPageState extends State<VendorOrderDetailsPage> {
     if (currentStatus == "Pending") {
       return Row(
         children: [
-          Expanded(child: _btn("Accept", Colors.green, () => _updateBackendAndNavigate("Preparing"))),
+          Expanded(child: _btn("Accept", Colors.green, () => setState(() => currentStatus = "Preparing"))),
           const SizedBox(width: 16),
-          Expanded(child: _btn("Reject", Colors.redAccent, () => _updateBackendAndNavigate("Rejected"))),
+          Expanded(child: _btn("Reject", Colors.redAccent, () => setState(() => currentStatus = "Rejected"))),
         ],
       );
     } else if (currentStatus == "Preparing") {
-      return SizedBox(width: double.infinity, child: _btn("Mark as Ready to Pickup", primaryBlue, () => _updateBackendAndNavigate("Ready")));
+      return SizedBox(width: double.infinity, child: _btn("Mark as Ready to Pickup", primaryBlue, () => setState(() => currentStatus = "Ready")));
     } else if (currentStatus == "Ready") {
-      return SizedBox(width: double.infinity, child: _btn("Mark as Picked Up", Colors.teal, () => _updateBackendAndNavigate("Completed")));
+      return SizedBox(width: double.infinity, child: _btn("Mark as Picked Up", Colors.teal, () => setState(() => currentStatus = "Completed")));
     } else if (currentStatus == "Completed") {
       return Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 16), decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(16)), child: const Center(child: Text("Order Completed", style: TextStyle(fontFamily: 'Inter', color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16))));
     }

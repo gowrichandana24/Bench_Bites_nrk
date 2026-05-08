@@ -2,10 +2,40 @@ import 'package:flutter/material.dart';
 import 'checkout_page.dart';
 import 'cafeteria_page.dart'; 
 import '../model/cart_model.dart'; 
-import 'package:lottie/lottie.dart';// ✅ Imported to keep cart and home page synced
+import 'package:lottie/lottie.dart';
 
-// ✅ GLOBAL CART STATE: Single source of truth for the entire app
 List<Map<String, dynamic>> globalCartItems = [];
+
+// ─── Coupon Model ────────────────────────────────────────────────────────────
+enum CouponType { flat, percent }
+
+class CouponDef {
+  final String code;
+  final CouponType type;
+  final double value;
+  final double minOrder;
+
+  const CouponDef({
+    required this.code,
+    required this.type,
+    required this.value,
+    required this.minOrder,
+  });
+
+  String get description {
+    String offer = type == CouponType.flat
+        ? '₹${value.toInt()} OFF'
+        : '${value.toInt()}% OFF';
+    return minOrder > 0 ? '$offer above ₹${minOrder.toInt()}' : offer;
+  }
+}
+
+const List<CouponDef> _availableCoupons = [
+  CouponDef(code: 'SAVE50',     type: CouponType.flat,    value: 50,  minOrder: 399),
+  CouponDef(code: 'FIRST20',    type: CouponType.percent, value: 20,  minOrder: 199),
+  CouponDef(code: 'WELCOME100', type: CouponType.flat,    value: 100, minOrder: 499),
+];
+// ─────────────────────────────────────────────────────────────────────────────
 
 class CartPage extends StatefulWidget {
   final List<Map<String, dynamic>>? cartItems;
@@ -20,8 +50,68 @@ class CartPage extends StatefulWidget {
 class _CartPageState extends State<CartPage> {
   final Color primaryBlue = const Color(0xFF0F4CFF);
   TextEditingController couponController = TextEditingController();
-  bool couponApplied = false;
-  int discount = 50;
+
+  // ─── Coupon state (replaces old couponApplied + discount) ────────────────
+  CouponDef? _appliedCoupon;
+  String _couponError = "";
+
+  int get _discountAmount {
+    if (_appliedCoupon == null) return 0;
+    final total = getTotal().toDouble();
+    if (total < _appliedCoupon!.minOrder) return 0;
+    if (_appliedCoupon!.type == CouponType.flat) {
+      return _appliedCoupon!.value.toInt();
+    } else {
+      return (total * _appliedCoupon!.value / 100).floor();
+    }
+  }
+
+  void _applyCoupon() {
+    final code = couponController.text.trim().toUpperCase();
+    if (code.isEmpty) {
+      setState(() => _couponError = "Please enter a coupon code");
+      return;
+    }
+
+    CouponDef? found;
+    try {
+      found = _availableCoupons.firstWhere((c) => c.code == code);
+    } catch (_) {
+      found = null;
+    }
+
+    if (found == null) {
+      setState(() {
+        _couponError = "Invalid coupon code";
+        _appliedCoupon = null;
+      });
+      return;
+    }
+
+    if (getTotal() < found.minOrder) {
+      setState(() {
+        _couponError =
+            "Minimum order ₹${found!.minOrder.toInt()} required for ${found.code}";
+        _appliedCoupon = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _appliedCoupon = found;
+      _couponError = "";
+    });
+    FocusScope.of(context).unfocus();
+  }
+
+  void _removeCoupon() {
+    setState(() {
+      _appliedCoupon = null;
+      _couponError = "";
+      couponController.clear();
+    });
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   @override
   void initState() {
@@ -36,16 +126,14 @@ class _CartPageState extends State<CartPage> {
   }
 
   int getFinalTotal() {
-    int total = getTotal() + 3; // Platform fee
-    return couponApplied ? total - discount : total;
+    int total = getTotal() + 3;
+    return total - _discountAmount;
   }
 
-  // ✅ SYNC LOGIC: Updates global list AND the CartModel!
   void updateQty(Map<String, dynamic> item, int delta) {
     setState(() {
       item["qty"] += delta;
       
-      // Keep original model synced so Home Page numbers don't reset
       if (delta > 0) {
         CartModel.add(item["id"]);
       } else {
@@ -76,7 +164,7 @@ class _CartPageState extends State<CartPage> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1180), // Matched width
+                constraints: const BoxConstraints(maxWidth: 1180),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -86,7 +174,7 @@ class _CartPageState extends State<CartPage> {
                     if (globalCartItems.isEmpty)
                       _buildEmptyCart(subTextColor)
                     else ...[
-                      ...globalCartItems.map((item) => _buildCartItemCard(item, isDark, cardColor, textColor, subTextColor)).toList(),
+                      ...globalCartItems.map((item) => _buildCartItemCard(item, isDark, cardColor, textColor, subTextColor)),
                       const SizedBox(height: 16),
                       _buildCouponSection(isDark, cardColor, textColor, subTextColor),
                       const SizedBox(height: 24),
@@ -152,16 +240,16 @@ class _CartPageState extends State<CartPage> {
               InkWell(
                 borderRadius: BorderRadius.circular(14),
                 onTap: () {
-  if (Navigator.canPop(context)) {
-    Navigator.pop(context);
-  } else {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => CafeteriaPage(toggleTheme: widget.toggleTheme ?? () {})),
-      (route) => false,
-    );
-  }
-},
+                  if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  } else {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (_) => CafeteriaPage(toggleTheme: widget.toggleTheme ?? () {})),
+                      (route) => false,
+                    );
+                  }
+                },
                 child: Container(
                   width: 44,
                   height: 44,
@@ -172,7 +260,7 @@ class _CartPageState extends State<CartPage> {
                   child: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? Colors.white : primaryBlue, size: 20),
                 ),
               ),
-              const SizedBox(width: 44), // Placeholder to keep title centered
+              const SizedBox(width: 44),
             ],
           ),
           Text(
@@ -196,14 +284,14 @@ class _CartPageState extends State<CartPage> {
         child: const Icon(Icons.fastfood, color: Colors.grey, size: 32),
       );
     } else if (imageValue.startsWith('http') || imageValue.startsWith('data:')) {
-      imageWidget = Image.network(imageValue, height: 80, width: 80, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(
+      imageWidget = Image.network(imageValue, height: 80, width: 80, fit: BoxFit.cover, errorBuilder: (_, _, _) => Container(
         color: Colors.grey.shade200,
         height: 80,
         width: 80,
         child: const Icon(Icons.fastfood, color: Colors.grey, size: 32),
       ));
     } else {
-      imageWidget = Image.asset(imageValue, height: 80, width: 80, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(
+      imageWidget = Image.asset(imageValue, height: 80, width: 80, fit: BoxFit.cover, errorBuilder: (_, _, _) => Container(
         color: Colors.grey.shade200,
         height: 80,
         width: 80,
@@ -263,8 +351,10 @@ class _CartPageState extends State<CartPage> {
               child: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 20),
             ),
             onPressed: () => setState(() {
-               for(int i = 0; i < item["qty"]; i++) CartModel.remove(item["id"]); 
-               globalCartItems.remove(item);
+              for (int i = 0; i < item["qty"]; i++) {
+                CartModel.remove(item["id"]);
+              }
+              globalCartItems.remove(item);
             }),
           )
         ],
@@ -280,38 +370,171 @@ class _CartPageState extends State<CartPage> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.05), blurRadius: 10, offset: const Offset(0, 4))],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: primaryBlue.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-            child: Icon(Icons.local_offer_outlined, color: primaryBlue, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: TextField(
-              controller: couponController,
-              style: TextStyle(color: textColor, fontFamily: 'Inter', fontWeight: FontWeight.w600),
-              decoration: InputDecoration(
-                hintText: "Enter coupon code",
-                hintStyle: TextStyle(color: subTextColor, fontFamily: 'Inter', fontWeight: FontWeight.w400),
-                border: InputBorder.none,
-                isDense: true,
+          // ── Applied state ──────────────────────────────────────────────
+          if (_appliedCoupon != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.green.shade300),
               ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _appliedCoupon!.code,
+                          style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontFamily: 'Nunito'),
+                        ),
+                        Text(
+                          "You save ₹$_discountAmount",
+                          style: TextStyle(color: Colors.green.shade700, fontSize: 12, fontFamily: 'Inter'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: _removeCoupon,
+                    child: const Icon(Icons.close, color: Colors.green, size: 20),
+                  ),
+                ],
+              ),
+            )
+
+          // ── Input state ────────────────────────────────────────────────
+          else ...[
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: primaryBlue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.local_offer_outlined, color: primaryBlue, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: couponController,
+                    textCapitalization: TextCapitalization.characters,
+                    style: TextStyle(color: textColor, fontFamily: 'Inter', fontWeight: FontWeight.w600),
+                    decoration: InputDecoration(
+                      hintText: "Enter coupon code",
+                      hintStyle: TextStyle(color: subTextColor, fontFamily: 'Inter', fontWeight: FontWeight.w400),
+                      border: InputBorder.none,
+                      isDense: true,
+                    ),
+                    onSubmitted: (_) => _applyCoupon(),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryBlue,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                  onPressed: _applyCoupon,
+                  child: const Text("Apply", style: TextStyle(fontFamily: 'Nunito', fontWeight: FontWeight.bold)),
+                ),
+              ],
             ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: couponApplied ? Colors.green : primaryBlue,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              elevation: 0,
+
+            // Error
+            if (_couponError.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: Text(
+                  _couponError,
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 12, fontFamily: 'Inter'),
+                ),
+              ),
+            ],
+
+            // Available coupons list
+            const SizedBox(height: 12),
+            Text(
+              "Available Coupons",
+              style: TextStyle(color: subTextColor, fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
             ),
-            onPressed: () {
-              if (couponController.text.isNotEmpty) setState(() => couponApplied = true);
-            },
-            child: Text(couponApplied ? "Applied" : "Apply", style: const TextStyle(fontFamily: 'Nunito', fontWeight: FontWeight.bold)),
-          )
+            const SizedBox(height: 8),
+            ..._availableCoupons.map((c) {
+              final eligible = getTotal() >= c.minOrder;
+              return GestureDetector(
+                onTap: eligible
+                    ? () {
+                        couponController.text = c.code;
+                        _applyCoupon();
+                      }
+                    : null,
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: eligible ? primaryBlue.withOpacity(0.35) : Colors.grey.withOpacity(0.2),
+                    ),
+                    color: eligible ? primaryBlue.withOpacity(0.05) : Colors.transparent,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: eligible ? primaryBlue.withOpacity(0.12) : Colors.grey.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          c.code,
+                          style: TextStyle(
+                            color: eligible ? primaryBlue : Colors.grey,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          c.description,
+                          style: TextStyle(
+                            color: eligible ? textColor : Colors.grey,
+                            fontSize: 12,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ),
+                      Text(
+                        eligible
+                            ? "TAP TO APPLY"
+                            : c.minOrder > 0
+                                ? "Need ₹${c.minOrder.toInt()}+"
+                                : "Not eligible",
+                        style: TextStyle(
+                          color: eligible ? primaryBlue : Colors.grey,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
         ],
       ),
     );
@@ -332,7 +555,7 @@ class _CartPageState extends State<CartPage> {
           const SizedBox(height: 16),
           _billRow("Item Total", getTotal(), subTextColor, textColor),
           _billRow("Platform Fee", 3, subTextColor, textColor),
-          if (couponApplied) _billRow("Discount", -discount, Colors.green, Colors.green),
+          if (_appliedCoupon != null) _billRow("Discount", -_discountAmount, Colors.green, Colors.green),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Divider(color: isDark ? Colors.white12 : Colors.grey.shade200, thickness: 1.5),
@@ -362,58 +585,42 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-
-Widget _buildEmptyCart(Color subTextColor) {
-  return Padding(
-    padding: const EdgeInsets.only(top: 100),
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // 🔥 Lottie with bottom crop
-        Stack(
-  alignment: Alignment.bottomCenter,
-  children: [
-    SizedBox(
-      height: 180,
-      child: Lottie.asset(
-        'assets/Cart icon.json',
-        fit: BoxFit.contain,
-      ),
-    ),
-
-    // 👇 Mask overlay to hide watermark
-    Container(
-      height: 30, // adjust based on watermark height
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-      ),
-    ),
-  ],
-),
-        const SizedBox(height: 20),
-
-        Text(
-          "Your cart is empty",
-          style: TextStyle(
-            fontFamily: 'Nunito',
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: subTextColor,
+  Widget _buildEmptyCart(Color subTextColor) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 100),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Stack(
+            alignment: Alignment.bottomCenter,
+            children: [
+              SizedBox(
+                height: 180,
+                child: Lottie.asset(
+                  'assets/Cart icon.json',
+                  fit: BoxFit.contain,
+                ),
+              ),
+              Container(
+                height: 30,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                ),
+              ),
+            ],
           ),
-        ),
-
-        const SizedBox(height: 8),
-
-        Text(
-          "Add items from cafeterias to see them here.",
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 14,
-            color: subTextColor.withOpacity(0.7),
+          const SizedBox(height: 20),
+          Text(
+            "Your cart is empty",
+            style: TextStyle(fontFamily: 'Nunito', fontSize: 20, fontWeight: FontWeight.bold, color: subTextColor),
           ),
-        ),
-      ],
-    ),
-  );
-}
+          const SizedBox(height: 8),
+          Text(
+            "Add items from cafeterias to see them here.",
+            style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: subTextColor.withOpacity(0.7)),
+          ),
+        ],
+      ),
+    );
+  }
 }
