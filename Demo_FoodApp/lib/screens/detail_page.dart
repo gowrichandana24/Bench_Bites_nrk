@@ -862,46 +862,44 @@ class _DetailPageState extends State<DetailPage> {
             children: [
               ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.asset(imageUrl, width: 120, height: 120, fit: BoxFit.cover)),
               const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(cafeteriaName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: textColor)),
-                    Text(pickupLocation, style: TextStyle(color: subText, fontSize: 13)),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.circle,
-                          color: status == 'Pending'
-                              ? Colors.orange
-                              : status == 'Preparing'
-                                  ? primary
-                                  : status == 'Ready'
-                                      ? Colors.teal
-                                      : status == 'Completed'
-                                          ? Colors.green
-                                          : Colors.grey,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(status,
-                            style: TextStyle(
-                                color: status == 'Pending'
-                                    ? Colors.orange
-                                    : status == 'Preparing'
-                                        ? primary
-                                        : status == 'Ready'
-                                            ? Colors.teal
-                                            : status == 'Completed'
-                                                ? Colors.green
-                                                : Colors.grey,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ],
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(cafeteriaName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: textColor)),
+                  Text(pickupLocation, style: TextStyle(color: subText, fontSize: 13)),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.circle,
+                        color: status == 'Pending'
+                            ? Colors.orange
+                            : status == 'Preparing'
+                                ? primary
+                                : status == 'Ready'
+                                    ? Colors.teal
+                                    : status == 'Completed'
+                                        ? Colors.green
+                                        : Colors.grey,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(status,
+                          style: TextStyle(
+                              color: status == 'Pending'
+                                  ? Colors.orange
+                                  : status == 'Preparing'
+                                      ? primary
+                                      : status == 'Ready'
+                                          ? Colors.teal
+                                          : status == 'Completed'
+                                              ? Colors.green
+                                              : Colors.grey,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),
