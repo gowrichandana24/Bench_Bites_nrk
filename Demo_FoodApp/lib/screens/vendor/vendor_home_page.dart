@@ -77,7 +77,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
               backgroundColor: cardColor,
               elevation: 0,
               iconTheme: IconThemeData(color: primaryBlue),
-              title: Text(VendorData.displayName, style: TextStyle(fontFamily: 'Nunito', fontWeight: FontWeight.bold, color: textColor)),
+              title: Text(VendorData.name, style: TextStyle(fontFamily: 'Nunito', fontWeight: FontWeight.bold, color: textColor)),
             )
           : null,
       body: SafeArea(
@@ -122,7 +122,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(VendorData.displayName, style: TextStyle(fontFamily: 'Nunito', fontSize: 18, fontWeight: FontWeight.w900, color: textColor), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text(VendorData.name, style: TextStyle(fontFamily: 'Nunito', fontSize: 18, fontWeight: FontWeight.w900, color: textColor), maxLines: 1, overflow: TextOverflow.ellipsis),
                       Text("Vendor Portal", style: TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w500, color: textColor.withOpacity(0.6))),
                     ],
                   ),
@@ -233,7 +233,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
                     children: [
                       Text("Overview", style: TextStyle(fontFamily: 'Nunito', fontSize: 24, fontWeight: FontWeight.w900, color: textColor)),
                       const SizedBox(height: 4),
-                      Text("Here is ${VendorData.displayName}'s summary today.", style: TextStyle(fontFamily: 'Inter', fontSize: 13, color: subText), maxLines: 2, overflow: TextOverflow.ellipsis),
+                      Text("Here is your restaurant's summary today.", style: TextStyle(fontFamily: 'Inter', fontSize: 13, color: subText), maxLines: 2, overflow: TextOverflow.ellipsis),
                     ],
                   ),
                 ),
@@ -510,15 +510,15 @@ class _VendorOrderDetailsPageState extends State<VendorOrderDetailsPage> {
     if (currentStatus == "Pending") {
       return Row(
         children: [
-          Expanded(child: _btn("Accept", Colors.green, () => setState(() => currentStatus = "Preparing"))),
+          Expanded(child: _btn("Accept", Colors.green, () => _updateOrderStatus("Preparing"))),
           const SizedBox(width: 16),
-          Expanded(child: _btn("Reject", Colors.redAccent, () => setState(() => currentStatus = "Rejected"))),
+          Expanded(child: _btn("Reject", Colors.redAccent, () => _updateOrderStatus("Rejected"))),
         ],
       );
     } else if (currentStatus == "Preparing") {
-      return SizedBox(width: double.infinity, child: _btn("Mark as Ready to Pickup", primaryBlue, () => setState(() => currentStatus = "Ready")));
+      return SizedBox(width: double.infinity, child: _btn("Mark as Ready to Pickup", primaryBlue, () => _updateOrderStatus("Ready")));
     } else if (currentStatus == "Ready") {
-      return SizedBox(width: double.infinity, child: _btn("Mark as Picked Up", Colors.teal, () => setState(() => currentStatus = "Completed")));
+      return SizedBox(width: double.infinity, child: _btn("Mark as Picked Up", Colors.teal, () => _updateOrderStatus("Completed")));
     } else if (currentStatus == "Completed") {
       return Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 16), decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(16)), child: const Center(child: Text("Order Completed", style: TextStyle(fontFamily: 'Inter', color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16))));
     }
@@ -531,5 +531,26 @@ class _VendorOrderDetailsPageState extends State<VendorOrderDetailsPage> {
       onPressed: onTap,
       child: Text(title, style: const TextStyle(fontFamily: 'Nunito', fontWeight: FontWeight.bold, fontSize: 16)),
     );
+  }
+
+  Future<void> _updateOrderStatus(String newStatus) async {
+    final previousStatus = currentStatus;
+    setState(() => currentStatus = newStatus);
+
+    try {
+      await ApiService.updateOrderStatus(widget.order['id'], newStatus);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Order status updated to $newStatus.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => currentStatus = previousStatus);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 }
