@@ -228,24 +228,15 @@ class _OrdersPageState extends State<OrdersPage> {
           Expanded(
               child: _actionBtn("Accept", Colors.green,
                   () => _setOrderStatus(order, "Preparing"))),
-
           const SizedBox(width: 12),
-
           Expanded(
             child: _actionBtn("Reject", Colors.redAccent, () {
               bool undoPressed = false;
-
               setState(() {
                 order["status"] = "Rejected";
               });
-              ApiService.updateOrderStatus(order["id"], "Rejected");
-
-              final messenger = ScaffoldMessenger.of(context);
-
-              /// POPUP
-              messenger.showSnackBar(
+              ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  duration: const Duration(seconds: 5),
                   content: const Text("Order Rejected"),
                   action: SnackBarAction(
                     label: "UNDO",
@@ -258,11 +249,11 @@ class _OrdersPageState extends State<OrdersPage> {
                   ),
                 ),
               );
-
+              ApiService.updateOrderStatus(order["orderId"] ?? order["id"], "Rejected");
               /// AUTO REMOVE
               Future.delayed(const Duration(seconds: 5), () {
                 if (!undoPressed && mounted) {
-                  messenger.hideCurrentSnackBar();
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
                   setState(() {
                     orders.remove(order);
                   });
@@ -331,7 +322,7 @@ class _OrdersPageState extends State<OrdersPage> {
     setState(() => order["status"] = status);
 
     try {
-      await ApiService.updateOrderStatus(order["id"], status);
+      await ApiService.updateOrderStatus(order["orderId"] ?? order["id"], status);
       await loadOrders();
     } catch (error) {
       if (!mounted) return;

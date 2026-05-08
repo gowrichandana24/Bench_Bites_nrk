@@ -1,9 +1,42 @@
 import 'package:flutter/material.dart';
 import '../model/notification_model.dart';
+import '../services/session.dart';
 import 'cafeteria_page.dart'; // Import to use CustomFloatingNavBar
 
-class NotificationPage extends StatelessWidget {
+class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
+
+  @override
+  State<NotificationPage> createState() => _NotificationPageState();
+}
+
+class _NotificationPageState extends State<NotificationPage> {
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      await NotificationModel.fetchNotifications(AppSession.userId);
+    } catch (error) {
+      _error = error.toString();
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,16 +59,23 @@ class NotificationPage extends StatelessWidget {
                   _buildTopBar(context, isDark, "Notifications"),
                   const SizedBox(height: 24),
                   Expanded(
-                    child: NotificationModel.notifications.isEmpty
-                        ? _buildEmptyState(isDark)
-                        : ListView.builder(
-                            padding: const EdgeInsets.only(bottom: 120), // Avoid clipping with NavBar
-                            itemCount: NotificationModel.notifications.length,
-                            itemBuilder: (context, index) {
-                              var notif = NotificationModel.notifications[index];
-                              return _buildNotificationCard(context, notif, isDark);
-                            },
-                          ),
+                    child: _loading
+                        ? const Center(child: CircularProgressIndicator())
+                        : _error != null
+                            ? _buildErrorState(context, _error!, isDark)
+                            : NotificationModel.notifications.isEmpty
+                                ? _buildEmptyState(isDark)
+                                : RefreshIndicator(
+                                    onRefresh: _loadNotifications,
+                                    child: ListView.builder(
+                                      padding: const EdgeInsets.only(bottom: 120),
+                                      itemCount: NotificationModel.notifications.length,
+                                      itemBuilder: (context, index) {
+                                        var notif = NotificationModel.notifications[index];
+                                        return _buildNotificationCard(context, notif, isDark);
+                                      },
+                                    ),
+                                  ),
                   ),
                 ],
               ),
@@ -190,6 +230,39 @@ class NotificationPage extends StatelessWidget {
           )
         ),
       ],
+    );
+  }
+
+  Widget _buildErrorState(BuildContext context, String message, bool isDark) {
+    final subTextColor = isDark ? Colors.white70 : const Color(0xFF6B7280);
+    final textColor = isDark ? Colors.white : const Color(0xFF10254E);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline_rounded, size: 72, color: Colors.redAccent.withOpacity(0.75)),
+            const SizedBox(height: 16),
+            Text(
+              'Unable to load notifications',
+              style: TextStyle(fontFamily: 'Nunito', fontSize: 18, fontWeight: FontWeight.w900, color: textColor),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              message,
+              style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: subTextColor),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _loadNotifications,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

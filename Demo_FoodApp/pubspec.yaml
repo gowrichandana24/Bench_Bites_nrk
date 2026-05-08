@@ -24,6 +24,8 @@ dependencies:
   cloud_firestore: ^5.0.1
   # Removed google_sign_in since you are using Firebase Auth now
   url_launcher: ^6.3.0
+  firebase_messaging: ^15.1.0
+  flutter_local_notifications: ^14.0.0
 
 dev_dependencies:
   flutter_test:

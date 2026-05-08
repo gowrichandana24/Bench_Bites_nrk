@@ -6,6 +6,7 @@ import 'dart:ui' as ui;
 import 'vendor/vendor_home_page.dart';
 import 'cafeteria_page.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 import '../services/session.dart';
 
 class LoginPage extends StatefulWidget {
@@ -60,6 +61,7 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       AppSession.setUser(backendUser);
+      await NotificationService.instance.registerFcmToken(AppSession.userId);
 
       if (!mounted) return;
 

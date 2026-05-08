@@ -2,21 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
+import 'services/notification_service.dart';
+import 'services/theme_service.dart';
 import 'screens/login_page.dart';
 import 'screens/splash_page.dart';
 
 /// 🌗 GLOBAL THEME CONTROLLER
-ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
+/// Managed from services/theme_service.dart
 
-void main() async {
-  // 1. Ensure Flutter bindings are initialized before calling Firebase
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // 2. 🔥 INITIALIZE FIREBASE HERE 🔥
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  await NotificationService.instance.init();
   runApp(const MyApp());
 }
 
@@ -24,15 +24,12 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   void toggleTheme() {
-    themeNotifier.value =
-        themeNotifier.value == ThemeMode.light
-            ? ThemeMode.dark
-            : ThemeMode.light;
+    toggleAppTheme();
   }
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder(
+    return ValueListenableBuilder<ThemeMode>(
       valueListenable: themeNotifier,
       builder: (context, ThemeMode currentMode, _) {
         return MaterialApp(

@@ -538,7 +538,7 @@ class _VendorOrderDetailsPageState extends State<VendorOrderDetailsPage> {
     setState(() => currentStatus = newStatus);
 
     try {
-      await ApiService.updateOrderStatus(widget.order['id'], newStatus);
+      await ApiService.updateOrderStatus(widget.order['orderId'] ?? widget.order['id'], newStatus);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Order status updated to $newStatus.')),
       );

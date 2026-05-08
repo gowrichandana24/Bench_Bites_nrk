@@ -1,5 +1,7 @@
 ﻿import 'package:flutter/material.dart';
+
 import '../services/api_service.dart';
+import '../services/theme_service.dart';
 import 'home_page.dart';
 import 'profile_page.dart';
 import 'notification_page.dart';
@@ -248,7 +250,7 @@ blurRadius: 8,
                       _iconButton(
                         icon: isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
                         isDark: isDark,
-                        onTap: widget.toggleTheme, 
+                        onTap: toggleAppTheme,
                       ),
                       const SizedBox(width: 10),
                       _iconButton(

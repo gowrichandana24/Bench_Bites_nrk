@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+
+import '../services/session.dart';
+import '../services/theme_service.dart';
 import 'login_page.dart';
 import 'detail_page.dart';
 import 'cafeteria_page.dart';
 import 'notification_page.dart';
-import '../services/session.dart';
 
 class ProfilePage extends StatefulWidget {
   final VoidCallback toggleTheme;
@@ -95,7 +97,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                       const Spacer(),
                       GestureDetector(
-                        onTap: widget.toggleTheme,
+                        onTap: toggleAppTheme,
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(

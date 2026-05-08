@@ -13,16 +13,20 @@ class ApiService {
     required String name,
     required String email,
     String avatar = '',
+    String? fcmToken,
   }) async {
+    final body = {
+      'googleId': googleId,
+      'name': name,
+      'email': email,
+      'avatar': avatar,
+      if (fcmToken != null) 'fcmToken': fcmToken,
+    };
+
     final response = await http.post(
       Uri.parse('$baseUrl/auth/google'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'googleId': googleId,
-        'name': name,
-        'email': email,
-        'avatar': avatar,
-      }),
+      body: jsonEncode(body),
     );
 
     return _decodeObject(response);
@@ -173,15 +177,53 @@ class ApiService {
     return _decodeObject(response);
   }
   static Future<List<Map<String, dynamic>>> getNotifications(String userId) async {
-  final response = await http.get(Uri.parse('$baseUrl/notifications/$userId'));
-  return _decodeList(response);
-}
+    final response = await http.get(Uri.parse('$baseUrl/notifications/$userId'));
+    return _decodeList(response);
+  }
 
-static Future<void> markNotificationAsRead(String notificationId) async {
-  final response = await http.patch(
-    Uri.parse('$baseUrl/notifications/$notificationId/read'),
-    headers: {'Content-Type': 'application/json'},
-  );
+  static Future<void> registerFcmToken(String userId, String token) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/users/$userId/fcm-token'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'token': token}),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final decoded = jsonDecode(response.body);
+      final message = decoded is Map && decoded['message'] != null
+          ? decoded['message'].toString()
+          : 'Request failed with status ${response.statusCode}';
+      throw Exception(message);
+    }
+  }
+
+  static Future<void> sendPromotionNotification({
+    required String title,
+    required String message,
+    List<String>? targetUserIds,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/notifications/send'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'title': title,
+        'message': message,
+        if (targetUserIds != null) 'targetUserIds': targetUserIds,
+      }),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final decoded = jsonDecode(response.body);
+      final message = decoded is Map && decoded['message'] != null
+          ? decoded['message'].toString()
+          : 'Request failed with status ${response.statusCode}';
+      throw Exception(message);
+    }
+  }
+
+  static Future<void> markNotificationAsRead(String notificationId) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/notifications/$notificationId/read'),
+      headers: {'Content-Type': 'application/json'},
+    );
   if (response.statusCode < 200 || response.statusCode >= 300) {
     final decoded = jsonDecode(response.body);
     final message = decoded is Map && decoded['message'] != null
